@@ -1,0 +1,44 @@
+<main class="shell">
+  <section class="phone-panel" aria-labelledby="app-title">
+    <div class="masthead">
+      <p class="eyebrow">Geo Attendance</p>
+      <h1 id="app-title">AttendanceApp</h1>
+    </div>
+
+    <label class="field">
+      <span>Device name</span>
+      <input
+        type="text"
+        [ngModel]="deviceName()"
+        (ngModelChange)="updateDeviceName($event)"
+        autocomplete="name"
+      />
+    </label>
+
+    <button type="button" class="primary-action" (click)="getLocation()" [disabled]="isSending()">
+      {{ isSending() ? 'Sending...' : 'Send Location' }}
+    </button>
+
+    <div class="status-row" aria-live="polite">
+      <span class="status-dot" [class.active]="isSending()"></span>
+      <span>{{ status() }}</span>
+    </div>
+
+    @if (lastLocation(); as location) {
+      <dl class="location-grid">
+        <div>
+          <dt>Latitude</dt>
+          <dd>{{ formatCoordinate(location.latitude) }}</dd>
+        </div>
+        <div>
+          <dt>Longitude</dt>
+          <dd>{{ formatCoordinate(location.longitude) }}</dd>
+        </div>
+        <div>
+          <dt>Sent</dt>
+          <dd>{{ formatTime(location.timestamp) }}</dd>
+        </div>
+      </dl>
+    }
+  </section>
+</main>

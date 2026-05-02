@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">AttendanceApp</string>
+    <string name="title_activity_main">AttendanceApp</string>
+    <string name="package_name">com.mohan.attendance</string>
+    <string name="custom_url_scheme">com.mohan.attendance</string>
+</resources>

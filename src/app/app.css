@@ -1,0 +1,154 @@
+:host {
+  display: block;
+  min-height: 100dvh;
+  color: #17211b;
+  font-family: Arial, Helvetica, sans-serif;
+}
+
+.shell {
+  align-items: center;
+  background:
+    linear-gradient(135deg, rgba(23, 87, 65, 0.14), transparent 38%),
+    linear-gradient(180deg, #f7fbf8 0%, #e8f0ee 100%);
+  box-sizing: border-box;
+  display: flex;
+  min-height: 100dvh;
+  padding: 24px;
+}
+
+.phone-panel {
+  background: #ffffff;
+  border: 1px solid #d7e2dd;
+  border-radius: 8px;
+  box-shadow: 0 24px 60px rgba(23, 33, 27, 0.12);
+  box-sizing: border-box;
+  margin: 0 auto;
+  max-width: 420px;
+  padding: 28px;
+  width: min(100%, 420px);
+}
+
+.masthead {
+  margin-bottom: 28px;
+}
+
+.eyebrow {
+  color: #416056;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0;
+  margin: 0 0 8px;
+  text-transform: uppercase;
+}
+
+h1 {
+  font-size: 34px;
+  line-height: 1.1;
+  margin: 0;
+}
+
+.field {
+  display: grid;
+  gap: 8px;
+  margin-bottom: 18px;
+}
+
+.field span,
+dt {
+  color: #5c7068;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+input {
+  background: #f9fbfa;
+  border: 1px solid #c8d6d1;
+  border-radius: 6px;
+  box-sizing: border-box;
+  color: #17211b;
+  font: inherit;
+  height: 46px;
+  padding: 0 12px;
+  width: 100%;
+}
+
+input:focus {
+  border-color: #167353;
+  box-shadow: 0 0 0 3px rgba(22, 115, 83, 0.16);
+  outline: none;
+}
+
+.primary-action {
+  background: #167353;
+  border: 0;
+  border-radius: 6px;
+  color: #ffffff;
+  cursor: pointer;
+  font: inherit;
+  font-weight: 700;
+  min-height: 48px;
+  width: 100%;
+}
+
+.primary-action:disabled {
+  background: #7b9189;
+  cursor: wait;
+}
+
+.status-row {
+  align-items: center;
+  color: #31453d;
+  display: flex;
+  gap: 10px;
+  margin: 18px 0 0;
+  min-height: 24px;
+}
+
+.status-dot {
+  background: #98aaa3;
+  border-radius: 999px;
+  display: inline-block;
+  height: 10px;
+  width: 10px;
+}
+
+.status-dot.active {
+  background: #d58924;
+}
+
+.location-grid {
+  border-top: 1px solid #e1ebe7;
+  display: grid;
+  gap: 16px;
+  grid-template-columns: 1fr 1fr;
+  margin: 22px 0 0;
+  padding-top: 20px;
+}
+
+.location-grid div:last-child {
+  grid-column: 1 / -1;
+}
+
+dd {
+  color: #17211b;
+  font-size: 18px;
+  font-weight: 700;
+  margin: 4px 0 0;
+}
+
+@media (max-width: 480px) {
+  .shell {
+    align-items: stretch;
+    padding: 0;
+  }
+
+  .phone-panel {
+    border: 0;
+    border-radius: 0;
+    box-shadow: none;
+    max-width: none;
+    min-height: 100dvh;
+    padding: 24px 18px;
+    width: 100%;
+  }
+}
