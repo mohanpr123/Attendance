@@ -13,7 +13,7 @@ import { LocationService } from './services/location';
 })
 export class App implements OnInit {
   private readonly locationService = inject(LocationService);
-
+//Hello Mohan
   protected readonly deviceName = signal('Mohan');
   protected readonly pendingAttendanceRequest = signal(false);
   protected readonly isSending = signal(false);
