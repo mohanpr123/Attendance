@@ -15,6 +15,15 @@
       />
     </label>
 
+    <button
+      type="button"
+      class="secondary-action setup-action"
+      (click)="setupFingerprint()"
+      [disabled]="isSending()"
+    >
+      Set Up Fingerprint
+    </button>
+
     @if (pendingAttendanceRequest()) {
       <div class="request-box">
         <p>Attendance request received</p>
@@ -39,6 +48,11 @@
       <span>{{ pushStatus() }}</span>
     </div>
 
+    <div class="status-row muted" aria-live="polite">
+      <span class="status-dot"></span>
+      <span>{{ biometricStatus() }}</span>
+    </div>
+
     @if (lastLocation(); as location) {
       <dl class="location-grid">
         <div>
@@ -52,6 +66,10 @@
         <div>
           <dt>Sent</dt>
           <dd>{{ formatTime(location.timestamp) }}</dd>
+        </div>
+        <div>
+          <dt>Fingerprint</dt>
+          <dd>Verified</dd>
         </div>
       </dl>
     }

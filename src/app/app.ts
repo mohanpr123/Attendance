@@ -1,4 +1,9 @@
 import { Capacitor } from '@capacitor/core';
+import {
+  AndroidBiometryStrength,
+  BiometricAuth,
+  BiometryError,
+} from '@aparajita/capacitor-biometric-auth';
 import { PushNotifications } from '@capacitor/push-notifications';
 import { Component, OnInit, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
@@ -13,8 +18,13 @@ import { LocationService } from './services/location';
 })
 export class App implements OnInit {
   private readonly locationService = inject(LocationService);
-//Hello Mohan
+  private readonly biometricBindingStorageKey = 'attendance.biometricBindingId';
+  private readonly biometricTypeStorageKey = 'attendance.biometricType';
+
   protected readonly deviceName = signal('Mohan');
+  protected readonly biometricBindingId = signal<string | null>(null);
+  protected readonly biometricStatus = signal('Fingerprint setup pending');
+  protected readonly biometricType = signal('strong');
   protected readonly pendingAttendanceRequest = signal(false);
   protected readonly isSending = signal(false);
   protected readonly status = signal('Ready');
@@ -27,6 +37,8 @@ export class App implements OnInit {
   } | null>(null);
 
   async ngOnInit(): Promise<void> {
+    this.loadBiometricBinding();
+    await this.checkBiometricAvailability();
     await this.initPush();
   }
 
@@ -35,11 +47,55 @@ export class App implements OnInit {
 
     if (this.pushToken()) {
       void this.savePushToken(this.pushToken() ?? '');
+      void this.saveBiometricBinding();
     }
   }
 
-  protected approveAttendanceRequest(): void {
+  protected async setupFingerprint(): Promise<void> {
+    if (!Capacitor.isNativePlatform()) {
+      this.biometricStatus.set('Fingerprint setup works in the Android app build.');
+      return;
+    }
+
+    const verified = await this.authenticateWithFingerprint(
+      'Set up fingerprint attendance',
+      'Verify once to bind this phone for attendance',
+    );
+
+    if (!verified) {
+      return;
+    }
+
+    const bindingId = this.createBindingId();
+    this.biometricBindingId.set(bindingId);
+    localStorage.setItem(this.biometricBindingStorageKey, bindingId);
+    localStorage.setItem(this.biometricTypeStorageKey, this.biometricType());
+    await this.saveBiometricBinding();
+    this.biometricStatus.set('Fingerprint binding saved.');
+  }
+
+  protected async approveAttendanceRequest(): Promise<void> {
     this.pendingAttendanceRequest.set(false);
+
+    if (!this.biometricBindingId()) {
+      await this.setupFingerprint();
+    }
+
+    if (!this.biometricBindingId()) {
+      this.status.set('Fingerprint setup is required.');
+      return;
+    }
+
+    const verified = await this.authenticateWithFingerprint(
+      'Verify attendance',
+      'Use fingerprint before sending location',
+    );
+
+    if (!verified) {
+      this.status.set('Fingerprint verification failed.');
+      return;
+    }
+
     this.sendLocation();
   }
 
@@ -118,11 +174,107 @@ export class App implements OnInit {
     }
 
     try {
-      await this.locationService.saveToken(this.deviceName(), token);
+      await this.locationService.saveToken(
+        this.deviceName(),
+        token,
+        this.biometricBindingId(),
+        this.biometricType(),
+      );
     } catch (error) {
       console.error('Token save error', error);
       this.pushStatus.set('Could not save push token.');
     }
+  }
+
+  private loadBiometricBinding(): void {
+    const bindingId = localStorage.getItem(this.biometricBindingStorageKey);
+    const biometricType = localStorage.getItem(this.biometricTypeStorageKey);
+
+    if (bindingId) {
+      this.biometricBindingId.set(bindingId);
+      this.biometricType.set(biometricType || 'strong');
+      this.biometricStatus.set('Fingerprint binding ready.');
+    }
+  }
+
+  private async checkBiometricAvailability(): Promise<void> {
+    if (!Capacitor.isNativePlatform()) {
+      this.biometricStatus.set('Fingerprint runs in the Android app build.');
+      return;
+    }
+
+    try {
+      const info = await BiometricAuth.checkBiometry();
+
+      if (!info.strongBiometryIsAvailable) {
+        this.biometricStatus.set('Strong fingerprint/biometric is not enrolled.');
+        return;
+      }
+
+      this.biometricType.set(String(info.biometryType));
+
+      if (!this.biometricBindingId()) {
+        this.biometricStatus.set('Tap Set Up Fingerprint before attendance.');
+      }
+    } catch (error) {
+      console.error('Biometry check error', error);
+      this.biometricStatus.set('Could not check fingerprint availability.');
+    }
+  }
+
+  private async authenticateWithFingerprint(
+    title: string,
+    subtitle: string,
+  ): Promise<boolean> {
+    try {
+      await BiometricAuth.authenticate({
+        reason: 'Attendance requires fingerprint verification.',
+        cancelTitle: 'Cancel',
+        allowDeviceCredential: false,
+        androidTitle: title,
+        androidSubtitle: subtitle,
+        androidConfirmationRequired: false,
+        androidBiometryStrength: AndroidBiometryStrength.strong,
+      });
+
+      return true;
+    } catch (error) {
+      if (error instanceof BiometryError) {
+        this.biometricStatus.set(error.message);
+      } else {
+        this.biometricStatus.set('Fingerprint verification failed.');
+      }
+
+      console.error('Fingerprint auth error', error);
+      return false;
+    }
+  }
+
+  private async saveBiometricBinding(): Promise<void> {
+    const bindingId = this.biometricBindingId();
+
+    if (!bindingId) {
+      return;
+    }
+
+    try {
+      await this.locationService.saveBiometricBinding(
+        this.deviceName(),
+        bindingId,
+        this.biometricType(),
+      );
+    } catch (error) {
+      console.error('Biometric binding save error', error);
+      this.biometricStatus.set('Could not save fingerprint binding.');
+    }
+  }
+
+  private createBindingId(): string {
+    if (crypto.randomUUID) {
+      return crypto.randomUUID();
+    }
+
+    return `${Date.now()}-${Math.random().toString(36).slice(2)}`;
   }
 
   private sendLocation(): void {
@@ -144,6 +296,8 @@ export class App implements OnInit {
             this.deviceName(),
             latitude,
             longitude,
+            this.biometricBindingId() ?? '',
+            this.biometricType(),
           );
 
           this.lastLocation.set({

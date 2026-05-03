@@ -112,6 +112,10 @@ input:focus {
   padding: 14px;
 }
 
+.setup-action {
+  margin-bottom: 18px;
+}
+
 .request-box p {
   font-weight: 700;
   margin: 0;
