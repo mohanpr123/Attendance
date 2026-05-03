@@ -55,6 +55,17 @@ export class App implements OnInit {
     }
 
     try {
+      if (Capacitor.getPlatform() === 'android') {
+        await PushNotifications.createChannel({
+          id: 'attendance',
+          name: 'Attendance',
+          description: 'Attendance check requests',
+          importance: 4,
+          visibility: 1,
+          vibration: true,
+        });
+      }
+
       await PushNotifications.addListener('registration', (token) => {
         this.pushToken.set(token.value);
         this.pushStatus.set('Push token registered.');
@@ -66,7 +77,14 @@ export class App implements OnInit {
         this.pushStatus.set('Push registration failed.');
       });
 
-      await PushNotifications.addListener('pushNotificationReceived', () => {
+      await PushNotifications.addListener('pushNotificationReceived', (notification) => {
+        const action = notification.data?.['action'];
+
+        if (action === 'SEND_LOCATION') {
+          this.pendingAttendanceRequest.set(true);
+          this.status.set('Attendance request received.');
+        }
+
         this.pushStatus.set('Attendance request received.');
       });
 
