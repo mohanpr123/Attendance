@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "620835540435",
+    "project_id": "sysdesignedu",
+    "storage_bucket": "sysdesignedu.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:620835540435:android:37daff811eb0fbbee4f326",
+        "android_client_info": {
+          "package_name": "com.mohan.attendance"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDrwzXGV3G9SgzSLw3xm5IGAbYD661Qy3A"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
