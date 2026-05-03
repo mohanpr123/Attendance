@@ -2,6 +2,7 @@ import { Injectable, inject } from '@angular/core';
 import { Firestore, doc, setDoc } from '@angular/fire/firestore';
 
 export interface LocationRecord {
+  deviceId: string;
   deviceName: string;
   latitude: number;
   longitude: number;
@@ -13,6 +14,7 @@ export interface LocationRecord {
 }
 
 export interface DeviceRecord {
+  deviceId: string;
   biometricBindingId?: string;
   biometricBoundAt?: number;
   biometricType?: string;
@@ -28,22 +30,23 @@ export class LocationService {
   private readonly firestore = inject(Firestore);
 
   async sendLocation(
+    deviceId: string,
     deviceName: string,
     latitude: number,
     longitude: number,
     biometricBindingId: string,
     biometricType: string,
   ): Promise<void> {
-    const safeDeviceName = this.getSafeDeviceName(deviceName);
-    const ref = doc(this.firestore, `locations/${safeDeviceName}`);
+    const ref = doc(this.firestore, `locations/${deviceId}`);
     const timestamp = Date.now();
 
     await setDoc(ref, {
+      deviceId,
       biometricBindingId,
       biometricType,
       biometricVerified: true,
       biometricVerifiedAt: timestamp,
-      deviceName: safeDeviceName,
+      deviceName,
       latitude,
       longitude,
       timestamp,
@@ -51,15 +54,16 @@ export class LocationService {
   }
 
   async saveToken(
+    deviceId: string,
     deviceName: string,
     token: string,
     biometricBindingId?: string | null,
     biometricType?: string | null,
   ): Promise<void> {
-    const safeDeviceName = this.getSafeDeviceName(deviceName);
-    const ref = doc(this.firestore, `devices/${safeDeviceName}`);
+    const ref = doc(this.firestore, `devices/${deviceId}`);
     const device: DeviceRecord = {
-      deviceName: safeDeviceName,
+      deviceId,
+      deviceName,
       token,
       updatedAt: Date.now(),
     };
@@ -78,20 +82,21 @@ export class LocationService {
   }
 
   async saveBiometricBinding(
+    deviceId: string,
     deviceName: string,
     biometricBindingId: string,
     biometricType: string,
   ): Promise<void> {
-    const safeDeviceName = this.getSafeDeviceName(deviceName);
-    const ref = doc(this.firestore, `devices/${safeDeviceName}`);
+    const ref = doc(this.firestore, `devices/${deviceId}`);
 
     await setDoc(
       ref,
       {
+        deviceId,
         biometricBindingId,
         biometricBoundAt: Date.now(),
         biometricType,
-        deviceName: safeDeviceName,
+        deviceName,
         updatedAt: Date.now(),
       } satisfies Partial<DeviceRecord>,
       { merge: true },

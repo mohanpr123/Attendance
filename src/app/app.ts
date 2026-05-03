@@ -1,4 +1,5 @@
 import { Capacitor } from '@capacitor/core';
+import { Device } from '@capacitor/device';
 import {
   AndroidBiometryStrength,
   BiometricAuth,
@@ -21,7 +22,8 @@ export class App implements OnInit {
   private readonly biometricBindingStorageKey = 'attendance.biometricBindingId';
   private readonly biometricTypeStorageKey = 'attendance.biometricType';
 
-  protected readonly deviceName = signal('Mohan');
+  protected readonly deviceId = signal<string | null>(null);
+  protected readonly deviceName = signal('');
   protected readonly biometricBindingId = signal<string | null>(null);
   protected readonly biometricStatus = signal('Fingerprint setup pending');
   protected readonly biometricType = signal('strong');
@@ -37,6 +39,9 @@ export class App implements OnInit {
   } | null>(null);
 
   async ngOnInit(): Promise<void> {
+    const deviceInfo = await Device.getId();
+    this.deviceId.set(deviceInfo.identifier);
+    this.loadDeviceName();
     this.loadBiometricBinding();
     await this.checkBiometricAvailability();
     await this.initPush();
@@ -45,9 +50,14 @@ export class App implements OnInit {
   protected updateDeviceName(value: string): void {
     this.deviceName.set(value);
 
-    if (this.pushToken()) {
+    if (this.pushToken() && this.deviceId()) {
       void this.savePushToken(this.pushToken() ?? '');
       void this.saveBiometricBinding();
+    }
+
+    // Save to localStorage
+    if (this.deviceId()) {
+      localStorage.setItem(`attendance.deviceName.${this.deviceId()}`, value);
     }
   }
 
@@ -169,12 +179,13 @@ export class App implements OnInit {
   }
 
   private async savePushToken(token: string): Promise<void> {
-    if (!token) {
+    if (!token || !this.deviceId()) {
       return;
     }
 
     try {
       await this.locationService.saveToken(
+        this.deviceId()!,
         this.deviceName(),
         token,
         this.biometricBindingId(),
@@ -183,6 +194,15 @@ export class App implements OnInit {
     } catch (error) {
       console.error('Token save error', error);
       this.pushStatus.set('Could not save push token.');
+    }
+  }
+
+  private loadDeviceName(): void {
+    if (this.deviceId()) {
+      const storedName = localStorage.getItem(`attendance.deviceName.${this.deviceId()}`);
+      if (storedName) {
+        this.deviceName.set(storedName);
+      }
     }
   }
 
@@ -225,40 +245,51 @@ export class App implements OnInit {
   private async authenticateWithFingerprint(
     title: string,
     subtitle: string,
+    maxRetries: number = 3,
   ): Promise<boolean> {
-    try {
-      await BiometricAuth.authenticate({
-        reason: 'Attendance requires fingerprint verification.',
-        cancelTitle: 'Cancel',
-        allowDeviceCredential: false,
-        androidTitle: title,
-        androidSubtitle: subtitle,
-        androidConfirmationRequired: false,
-        androidBiometryStrength: AndroidBiometryStrength.strong,
-      });
-
-      return true;
-    } catch (error) {
-      if (error instanceof BiometryError) {
-        this.biometricStatus.set(error.message);
-      } else {
-        this.biometricStatus.set('Fingerprint verification failed.');
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+      try {
+        await BiometricAuth.authenticate({
+          reason: 'Attendance requires fingerprint verification.',
+          cancelTitle: 'Cancel',
+          allowDeviceCredential: false,
+          androidTitle: title,
+          androidSubtitle: subtitle,
+          androidConfirmationRequired: false,
+          androidBiometryStrength: AndroidBiometryStrength.strong,
+        });
+        return true;
+      } catch (error) {
+        if (error instanceof BiometryError) {
+          if (attempt === maxRetries) {
+            this.biometricStatus.set(error.message);
+          } else {
+            this.biometricStatus.set(`Fingerprint failed, try again (${attempt}/${maxRetries})`);
+            // Wait a bit before retry
+            await new Promise(resolve => setTimeout(resolve, 1000));
+          }
+        } else {
+          if (attempt === maxRetries) {
+            this.biometricStatus.set('Fingerprint verification failed.');
+          }
+          console.error('Fingerprint auth error', error);
+        }
       }
-
-      console.error('Fingerprint auth error', error);
-      return false;
     }
+    return false;
   }
 
   private async saveBiometricBinding(): Promise<void> {
     const bindingId = this.biometricBindingId();
+    const deviceId = this.deviceId();
 
-    if (!bindingId) {
+    if (!bindingId || !deviceId) {
       return;
     }
 
     try {
       await this.locationService.saveBiometricBinding(
+        deviceId,
         this.deviceName(),
         bindingId,
         this.biometricType(),
@@ -293,6 +324,7 @@ export class App implements OnInit {
 
         try {
           await this.locationService.sendLocation(
+            this.deviceId() ?? '',
             this.deviceName(),
             latitude,
             longitude,
