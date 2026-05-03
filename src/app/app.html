@@ -15,13 +15,28 @@
       />
     </label>
 
-    <button type="button" class="primary-action" (click)="getLocation()" [disabled]="isSending()">
-      {{ isSending() ? 'Sending...' : 'Send Location' }}
-    </button>
+    @if (pendingAttendanceRequest()) {
+      <div class="request-box">
+        <p>Attendance request received</p>
+        <div class="action-row">
+          <button type="button" class="primary-action" (click)="approveAttendanceRequest()" [disabled]="isSending()">
+            {{ isSending() ? 'Sending...' : 'Yes, Send Location' }}
+          </button>
+          <button type="button" class="secondary-action" (click)="declineAttendanceRequest()" [disabled]="isSending()">
+            Not Now
+          </button>
+        </div>
+      </div>
+    }
 
     <div class="status-row" aria-live="polite">
       <span class="status-dot" [class.active]="isSending()"></span>
       <span>{{ status() }}</span>
+    </div>
+
+    <div class="status-row muted" aria-live="polite">
+      <span class="status-dot"></span>
+      <span>{{ pushStatus() }}</span>
     </div>
 
     @if (lastLocation(); as location) {

@@ -8,6 +8,12 @@ export interface LocationRecord {
   timestamp: number;
 }
 
+export interface DeviceRecord {
+  deviceName: string;
+  token: string;
+  updatedAt: number;
+}
+
 @Injectable({
   providedIn: 'root',
 })
@@ -28,6 +34,21 @@ export class LocationService {
       longitude,
       timestamp: Date.now(),
     } satisfies LocationRecord);
+  }
+
+  async saveToken(deviceName: string, token: string): Promise<void> {
+    const safeDeviceName = this.getSafeDeviceName(deviceName);
+    const ref = doc(this.firestore, `devices/${safeDeviceName}`);
+
+    await setDoc(
+      ref,
+      {
+        deviceName: safeDeviceName,
+        token,
+        updatedAt: Date.now(),
+      } satisfies DeviceRecord,
+      { merge: true },
+    );
   }
 
   private getSafeDeviceName(deviceName: string): string {
