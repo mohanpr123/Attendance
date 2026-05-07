@@ -28,6 +28,8 @@ export class App implements OnInit {
   protected readonly biometricStatus = signal('Fingerprint setup pending');
   protected readonly biometricType = signal('strong');
   protected readonly pendingAttendanceRequest = signal(false);
+  protected readonly pendingAttendanceId = signal<string | null>(null);
+  protected readonly pendingCheckin = signal<'IN' | 'OUT' | null>(null);
   protected readonly isSending = signal(false);
   protected readonly status = signal('Ready');
   protected readonly pushStatus = signal('Push registration pending');
@@ -110,7 +112,18 @@ export class App implements OnInit {
   }
 
   protected declineAttendanceRequest(): void {
+    const attendanceId = this.pendingAttendanceId();
+    if (attendanceId && this.deviceId()) {
+      void this.locationService.declineAttendanceVerification(
+        attendanceId,
+        this.deviceId()!,
+        this.deviceName(),
+      );
+    }
+
     this.pendingAttendanceRequest.set(false);
+    this.pendingAttendanceId.set(null);
+    this.pendingCheckin.set(null);
     this.status.set('Attendance request skipped.');
   }
 
@@ -145,9 +158,13 @@ export class App implements OnInit {
 
       await PushNotifications.addListener('pushNotificationReceived', (notification) => {
         const action = notification.data?.['action'];
+        const attendanceId = this.normalizeText(notification.data?.['attendanceId']);
+        const checkinValue = this.normalizeCheckin(notification.data?.['checkin']);
 
         if (action === 'SEND_LOCATION') {
           this.pendingAttendanceRequest.set(true);
+          this.pendingAttendanceId.set(attendanceId);
+          this.pendingCheckin.set(checkinValue);
           this.status.set('Attendance request received.');
         }
 
@@ -156,9 +173,13 @@ export class App implements OnInit {
 
       await PushNotifications.addListener('pushNotificationActionPerformed', (event) => {
         const action = event.notification.data?.['action'];
+        const attendanceId = this.normalizeText(event.notification.data?.['attendanceId']);
+        const checkinValue = this.normalizeCheckin(event.notification.data?.['checkin']);
 
         if (action === 'SEND_LOCATION') {
           this.pendingAttendanceRequest.set(true);
+          this.pendingAttendanceId.set(attendanceId);
+          this.pendingCheckin.set(checkinValue);
           this.status.set('Attendance request opened.');
         }
       });
@@ -215,6 +236,24 @@ export class App implements OnInit {
       this.biometricType.set(biometricType || 'strong');
       this.biometricStatus.set('Fingerprint binding ready.');
     }
+  }
+
+  private normalizeCheckin(value: unknown): 'IN' | 'OUT' | null {
+    if (typeof value !== 'string') {
+      return null;
+    }
+
+    const normalized = value.trim().toUpperCase();
+    return normalized === 'IN' || normalized === 'OUT' ? normalized : null;
+  }
+
+  private normalizeText(value: unknown): string | null {
+    if (typeof value !== 'string') {
+      return null;
+    }
+
+    const normalized = value.trim();
+    return normalized ? normalized : null;
   }
 
   private async checkBiometricAvailability(): Promise<void> {
@@ -309,6 +348,12 @@ export class App implements OnInit {
   }
 
   private sendLocation(): void {
+    const attendanceId = this.pendingAttendanceId();
+    if (!attendanceId) {
+      this.status.set('Attendance request is missing its log ID.');
+      return;
+    }
+
     if (!navigator.geolocation) {
       this.status.set('Location is not available on this device.');
       return;
@@ -323,15 +368,19 @@ export class App implements OnInit {
         const longitude = position.coords.longitude;
 
         try {
-          await this.locationService.sendLocation(
+          await this.locationService.sendAttendanceVerification(
+            attendanceId,
             this.deviceId() ?? '',
             this.deviceName(),
             latitude,
             longitude,
             this.biometricBindingId() ?? '',
             this.biometricType(),
+            this.pendingCheckin() ?? undefined,
           );
 
+          this.pendingAttendanceId.set(null);
+          this.pendingCheckin.set(null);
           this.lastLocation.set({
             latitude,
             longitude,

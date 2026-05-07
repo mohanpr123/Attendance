@@ -2,6 +2,7 @@ import { Injectable, inject } from '@angular/core';
 import { Firestore, doc, setDoc } from '@angular/fire/firestore';
 
 export interface LocationRecord {
+  attendanceId: string;
   deviceId: string;
   deviceName: string;
   latitude: number;
@@ -10,6 +11,10 @@ export interface LocationRecord {
   biometricType: string;
   biometricVerified: boolean;
   biometricVerifiedAt: number;
+  phoneVerified: boolean;
+  verificationStatus: 'Verified';
+  verifiedAt: number;
+  checkin?: 'IN' | 'OUT';
   timestamp: number;
 }
 
@@ -29,28 +34,59 @@ export interface DeviceRecord {
 export class LocationService {
   private readonly firestore = inject(Firestore);
 
-  async sendLocation(
+  async sendAttendanceVerification(
+    attendanceId: string,
     deviceId: string,
     deviceName: string,
     latitude: number,
     longitude: number,
     biometricBindingId: string,
     biometricType: string,
+    checkin?: 'IN' | 'OUT',
   ): Promise<void> {
-    const ref = doc(this.firestore, `locations/${deviceId}`);
+    const ref = doc(this.firestore, `attendance/${attendanceId}`);
     const timestamp = Date.now();
-
-    await setDoc(ref, {
+    const record: LocationRecord = {
+      attendanceId,
       deviceId,
       biometricBindingId,
       biometricType,
       biometricVerified: true,
       biometricVerifiedAt: timestamp,
+      phoneVerified: true,
+      verificationStatus: 'Verified',
+      verifiedAt: timestamp,
       deviceName,
       latitude,
       longitude,
       timestamp,
-    } satisfies LocationRecord);
+    };
+
+    if (checkin) {
+      record.checkin = checkin;
+    }
+
+    await setDoc(ref, record, { merge: true });
+  }
+
+  async declineAttendanceVerification(
+    attendanceId: string,
+    deviceId: string,
+    deviceName: string,
+  ): Promise<void> {
+    const ref = doc(this.firestore, `attendance/${attendanceId}`);
+
+    await setDoc(
+      ref,
+      {
+        deviceId,
+        deviceName,
+        phoneVerified: false,
+        verificationStatus: 'Declined',
+        verifiedAt: Date.now(),
+      },
+      { merge: true },
+    );
   }
 
   async saveToken(
@@ -101,11 +137,5 @@ export class LocationService {
       } satisfies Partial<DeviceRecord>,
       { merge: true },
     );
-  }
-
-  private getSafeDeviceName(deviceName: string): string {
-    const value = deviceName.trim() || 'Mohan';
-
-    return value.replace(/[\/\\#?]/g, '-');
   }
 }
