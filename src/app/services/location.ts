@@ -1,5 +1,5 @@
 import { Injectable, inject } from '@angular/core';
-import { Firestore, doc, setDoc } from '@angular/fire/firestore';
+import { Firestore, deleteField, doc, setDoc } from '@angular/fire/firestore';
 
 export interface AttendanceVerificationRecord {
   attendanceId: string;
@@ -97,17 +97,19 @@ export class LocationService {
     biometricType?: string | null,
   ): Promise<void> {
     const ref = doc(this.firestore, `devices/${deviceId}`);
-    const device: DeviceRecord = {
+    const device: Record<string, unknown> = {
       deviceId,
       deviceName,
       token,
+      tokenInvalidatedAt: deleteField(),
+      tokenInvalidationReason: deleteField(),
       updatedAt: Date.now(),
     };
 
     if (biometricBindingId) {
-      device.biometricBindingId = biometricBindingId;
-      device.biometricBoundAt = Date.now();
-      device.biometricType = biometricType || 'strong';
+      device['biometricBindingId'] = biometricBindingId;
+      device['biometricBoundAt'] = Date.now();
+      device['biometricType'] = biometricType || 'strong';
     }
 
     await setDoc(
