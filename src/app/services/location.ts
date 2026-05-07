@@ -1,7 +1,7 @@
 import { Injectable, inject } from '@angular/core';
 import { Firestore, doc, setDoc } from '@angular/fire/firestore';
 
-export interface LocationRecord {
+export interface AttendanceVerificationRecord {
   attendanceId: string;
   deviceId: string;
   deviceName: string;
@@ -15,7 +15,7 @@ export interface LocationRecord {
   verificationStatus: 'Verified';
   verifiedAt: number;
   checkin?: 'IN' | 'OUT';
-  timestamp: number;
+  locationTimestamp: number;
 }
 
 export interface DeviceRecord {
@@ -46,7 +46,7 @@ export class LocationService {
   ): Promise<void> {
     const ref = doc(this.firestore, `attendance/${attendanceId}`);
     const timestamp = Date.now();
-    const record: LocationRecord = {
+    const record: AttendanceVerificationRecord = {
       attendanceId,
       deviceId,
       biometricBindingId,
@@ -59,7 +59,7 @@ export class LocationService {
       deviceName,
       latitude,
       longitude,
-      timestamp,
+      locationTimestamp: timestamp,
     };
 
     if (checkin) {
